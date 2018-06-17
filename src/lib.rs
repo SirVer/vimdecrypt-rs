@@ -48,7 +48,7 @@ pub fn zip_decrypt(data: &[u8], password: &str) -> Result<Vec<u8>> {
     let mut keys = [0x12345678u32, 0x23456789u32, 0x34567890u32];
     let update_keys = |keys: &mut [u32], byte| {
         keys[0] = crc32(keys[0], byte);
-        keys[1] = ((keys[1] + (keys[0] & 0xFF)) * 134775813 + 1) & 0xFFFFFFFF;
+        keys[1] = ((keys[1] + (keys[0] & 0xFF)).wrapping_mul(134775813) + 1) & 0xFFFFFFFF;
         keys[2] = crc32(keys[2], (keys[1] >> 24) as u8);
     };
 
