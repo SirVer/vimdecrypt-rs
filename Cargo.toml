@@ -1,6 +1,6 @@
 [package]
 name = "vimdecrypt"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Holger Rapp <HolgerRapp@gmx.net>"]
 documentation = "https://docs.rs/vimdecrypt"
 homepage = "https://github.com/SirVer/vimdecrypt-rs"
