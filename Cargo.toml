@@ -12,7 +12,7 @@ license = "MIT"
 exclude = [
   ".gitignore",
   ".travis.yml",
-  "deploy.sh",
+  "watcher.lua",
 ]
 
 [dependencies]
