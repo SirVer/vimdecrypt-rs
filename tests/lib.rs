@@ -35,4 +35,3 @@ fn test_blowfish() {
 fn test_blowfish2() {
     assert_eq!(decrypt_and_hash("data/lorem_blowfish2.txt"), GOLDEN_SHA);
 }
-

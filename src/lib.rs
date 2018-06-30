@@ -1,5 +1,14 @@
 // Implementation heavily lifted from https://github.com/nlitsme/vimdecrypt.
 
+//!# A simple crate to decrypt Vim encrypted files.
+
+#![deny(missing_docs,
+        missing_debug_implementations, missing_copy_implementations,
+        trivial_casts, trivial_numeric_casts,
+        unsafe_code,
+        unstable_features,
+        unused_import_braces, unused_qualifications)]
+
 #[macro_use]
 extern crate failure;
 extern crate blowfish;
@@ -10,7 +19,16 @@ use blowfish::BlockCipher;
 use generic_array::GenericArray;
 use sha2::Digest;
 
-pub type Result<T> = ::std::result::Result<T, failure::Error>;
+/// Error codes that can be returned by this library.
+#[derive(Fail, Debug, Copy, Clone)]
+pub enum Error {
+    /// Unknown VimCrypt method. Only 01-03 are supported, i.e. up to Vim 8.
+    #[fail(display = "Unknown VimCrypt header.")]
+    UnknownCryptMethod,
+}
+
+/// Result type returned by this library.
+pub type Result<T> = ::std::result::Result<T, Error>;
 
 #[derive(Debug)]
 enum CryptMethod {
@@ -25,7 +43,7 @@ impl CryptMethod {
             b"VimCrypt~01!" => Ok(CryptMethod::Zip),
             b"VimCrypt~02!" => Ok(CryptMethod::Blowfish),
             b"VimCrypt~03!" => Ok(CryptMethod::Blowfish2),
-            _ => bail!("Unknown VimCrypt header."),
+            _ => Err(Error::UnknownCryptMethod),
         }
     }
 }
@@ -41,14 +59,14 @@ fn make_crc_table(seed: u32) -> Vec<u32> {
     (0..256).map(|b| calc_entry(b, seed)).collect()
 }
 
-pub fn zip_decrypt(data: &[u8], password: &str) -> Result<Vec<u8>> {
-    let crc_table = make_crc_table(0xedb88320);
+fn zip_decrypt(data: &[u8], password: &str) -> Result<Vec<u8>> {
+    let crc_table = make_crc_table(0xedb8_8320);
 
-    let crc32 = |crc, byte: u8| crc_table[((crc ^ (byte as u32)) & 0xff) as usize] ^ (crc >> 8);
-    let mut keys = [0x12345678u32, 0x23456789u32, 0x34567890u32];
+    let crc32 = |crc, byte: u8| crc_table[((crc ^ u32::from(byte)) & 0xff) as usize] ^ (crc >> 8);
+    let mut keys = [0x1234_5678, 0x2345_6789, 0x3456_7890];
     let update_keys = |keys: &mut [u32], byte| {
         keys[0] = crc32(keys[0], byte);
-        keys[1] = ((keys[1] + (keys[0] & 0xFF)).wrapping_mul(134775813) + 1) & 0xFFFFFFFF;
+        keys[1] = (keys[1] + (keys[0] & 0xFF)).wrapping_mul(134_775_813) + 1;
         keys[2] = crc32(keys[2], (keys[1] >> 24) as u8);
     };
 
@@ -74,7 +92,7 @@ fn sha256(password: &[u8], salt: &[u8]) -> Vec<u8> {
     hasher.result().to_vec()
 }
 
-pub fn to_hex_string(bytes: &[u8]) -> String {
+fn to_hex_string(bytes: &[u8]) -> String {
     let strs: Vec<String> = bytes.iter().map(|b| format!("{:02x}", b)).collect();
     strs.join("")
 }
@@ -84,7 +102,7 @@ fn hashpw(password: &str, salt: &[u8]) -> Vec<u8> {
     for _ in 0..1000 {
         key = sha256(to_hex_string(&key).as_bytes(), salt);
     }
-    key.into()
+    key
 }
 
 fn wordswap(a: &mut [u8]) {
@@ -95,7 +113,7 @@ fn wordswap(a: &mut [u8]) {
     a.swap(5, 6);
 }
 
-pub fn blowfish_decrypt(all_data: &[u8], password: &str) -> Result<Vec<u8>> {
+fn blowfish_decrypt(all_data: &[u8], password: &str) -> Result<Vec<u8>> {
     let salt = &all_data[0..8];
     let iv = &all_data[8..16];
     let data = all_data[16..].to_vec();
@@ -115,12 +133,12 @@ pub fn blowfish_decrypt(all_data: &[u8], password: &str) -> Result<Vec<u8>> {
             bf.encrypt_block(&mut GenericArray::from_mut_slice(&mut xor));
             wordswap(&mut xor);
         }
-        plaintext.push(xor[(o % 8) as usize] ^ data[o]);
+        plaintext.push(xor[o % 8] ^ data[o]);
     }
     Ok(plaintext)
 }
 
-pub fn blowfish2_decrypt(all_data: &[u8], password: &str) -> Result<Vec<u8>> {
+fn blowfish2_decrypt(all_data: &[u8], password: &str) -> Result<Vec<u8>> {
     let salt = &all_data[0..8];
     let mut iv = all_data[8..16].to_vec();
     let data = all_data[16..].to_vec();
@@ -138,11 +156,18 @@ pub fn blowfish2_decrypt(all_data: &[u8], password: &str) -> Result<Vec<u8>> {
             xor = iv;
             iv = data[o..(o + 8).min(data.len())].to_vec();
         }
-        plaintext.push(xor[(o % 8) as usize] ^ data[o]);
+        plaintext.push(xor[o % 8] ^ data[o]);
     }
     Ok(plaintext)
 }
 
+/// Decrypts `data` using `password`. The `data` blob needs to start with the magic bytes of Vim
+/// crypt files, i.e. `VimCrypt~`.
+///
+/// # Errors
+///
+/// Returns `Error::UnknownCrpytMethod` if the header is invalid.
+/// A wrong password is not an error case, the returned value will just be scrambled.
 pub fn decrypt(data: &[u8], password: &str) -> Result<Vec<u8>> {
     let method = CryptMethod::from_header(&data[0..12])?;
     let data = match method {
