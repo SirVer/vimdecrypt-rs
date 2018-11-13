@@ -2,12 +2,16 @@
 
 //!# A simple crate to decrypt Vim encrypted files.
 
-#![deny(missing_docs,
-        missing_debug_implementations, missing_copy_implementations,
-        trivial_casts, trivial_numeric_casts,
-        unsafe_code,
-        unstable_features,
-        unused_import_braces, unused_qualifications)]
+#![deny(
+    missing_docs,
+    missing_debug_implementations,
+    trivial_casts,
+    trivial_numeric_casts,
+    unsafe_code,
+    unstable_features,
+    unused_import_braces,
+    unused_qualifications
+)]
 
 #[macro_use]
 extern crate failure;
@@ -18,6 +22,7 @@ extern crate sha2;
 use blowfish::BlockCipher;
 use generic_array::GenericArray;
 use sha2::Digest;
+use std::fmt;
 
 /// Error codes that can be returned by this library.
 #[derive(Fail, Debug, Copy, Clone)]
@@ -30,11 +35,28 @@ pub enum Error {
 /// Result type returned by this library.
 pub type Result<T> = ::std::result::Result<T, Error>;
 
+/// The method used to encrypt this data.
 #[derive(Debug)]
-enum CryptMethod {
+pub enum CryptMethod {
+    /// The 'zip' method.
     Zip,
+
+    /// The 'blowfish' method.
     Blowfish,
+
+    /// The 'blowfish2' method.
     Blowfish2,
+}
+
+impl fmt::Display for CryptMethod {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let s = match *self {
+            CryptMethod::Zip => "zip",
+            CryptMethod::Blowfish => "blowfish",
+            CryptMethod::Blowfish2 => "blowfish2",
+        };
+        write!(f, "{}", s)
+    }
 }
 
 impl CryptMethod {
@@ -176,4 +198,9 @@ pub fn decrypt(data: &[u8], password: &str) -> Result<Vec<u8>> {
         CryptMethod::Blowfish2 => blowfish2_decrypt(&data[12..], password)?,
     };
     Ok(data)
+}
+
+/// Returns the CryptMethod that was used on this file.
+pub fn get_crypt_method(data: &[u8]) -> Result<CryptMethod> {
+    Ok(CryptMethod::from_header(&data[0..12])?)
 }
