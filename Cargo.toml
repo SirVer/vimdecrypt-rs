@@ -10,6 +10,7 @@ name = "vimdecrypt"
 readme = "README.md"
 repository = "https://github.com/SirVer/vimdecrypt-rs"
 version = "0.1.2"
+edition = "2018"
 
 [dependencies]
 blowfish = "0.3.0"

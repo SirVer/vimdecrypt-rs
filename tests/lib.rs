@@ -1,5 +1,5 @@
-extern crate sha2;
-extern crate vimdecrypt;
+use sha2;
+use vimdecrypt;
 
 use sha2::Digest;
 use std::fs;

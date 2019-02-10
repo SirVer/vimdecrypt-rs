@@ -13,14 +13,11 @@
     unused_qualifications
 )]
 
-#[macro_use]
-extern crate failure;
-extern crate blowfish;
-extern crate generic_array;
-extern crate sha2;
-
+use blowfish;
 use blowfish::BlockCipher;
+use failure::Fail;
 use generic_array::GenericArray;
+use sha2;
 use sha2::Digest;
 use std::fmt;
 
@@ -49,7 +46,7 @@ pub enum CryptMethod {
 }
 
 impl fmt::Display for CryptMethod {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match *self {
             CryptMethod::Zip => "zip",
             CryptMethod::Blowfish => "blowfish",

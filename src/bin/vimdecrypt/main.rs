@@ -1,18 +1,12 @@
-extern crate rpassword;
-extern crate vimdecrypt;
-#[macro_use]
-extern crate structopt;
-
+use rpassword;
 use std::fs;
 use std::path::PathBuf;
 use structopt::StructOpt;
+use vimdecrypt;
 
 /// Decrypts files encrpyted with Vim.
 #[derive(StructOpt, Debug)]
-#[structopt(
-    name = "vimdecrypt",
-    author = "Holger H. Rapp <SirVer@gmx.de>"
-)]
+#[structopt(name = "vimdecrypt", author = "Holger H. Rapp <SirVer@gmx.de>")]
 struct Args {
     /// The files to process.
     #[structopt(name = "FILE", parse(from_os_str))]
