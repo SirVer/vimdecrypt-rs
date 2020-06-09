@@ -13,13 +13,14 @@
     unused_qualifications
 )]
 
-use blowfish;
-use blowfish::BlockCipher;
+use blowfish::block_cipher::{BlockCipher, NewBlockCipher};
 use failure::Fail;
 use generic_array::GenericArray;
 use sha2;
 use sha2::Digest;
 use std::fmt;
+
+type BlowfishBE = blowfish::Blowfish<byteorder::BigEndian>;
 
 /// Error codes that can be returned by this library.
 #[derive(Fail, Debug, Copy, Clone)]
@@ -138,7 +139,7 @@ fn blowfish_decrypt(all_data: &[u8], password: &str) -> Result<Vec<u8>> {
     let data = all_data[16..].to_vec();
 
     let key = hashpw(password, salt);
-    let bf = blowfish::Blowfish::new_varkey(&key).unwrap();
+    let bf = BlowfishBE::new_varkey(&key).unwrap();
 
     let mut xor = iv.to_vec();
     wordswap(&mut xor);
@@ -163,7 +164,7 @@ fn blowfish2_decrypt(all_data: &[u8], password: &str) -> Result<Vec<u8>> {
     let data = all_data[16..].to_vec();
 
     let key = hashpw(password, salt);
-    let bf = blowfish::Blowfish::new_varkey(&key).unwrap();
+    let bf = BlowfishBE::new_varkey(&key).unwrap();
 
     let mut xor = vec![8; 0];
     let mut plaintext = Vec::new();
