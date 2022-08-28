@@ -9,8 +9,8 @@ const GOLDEN_SHA: &str = "349923fdc426f96a6459dfe7a9665804c17ce6e27d0c6516e161bf
 
 fn sha256_digest(data: &[u8]) -> String {
     let mut hasher = sha2::Sha256::default();
-    hasher.input(data);
-    let bytes = hasher.result().to_vec();
+    hasher.update(data);
+    let bytes = hasher.finalize().to_vec();
     let strs: Vec<String> = bytes.iter().map(|b| format!("{:02x}", b)).collect();
     strs.join("")
 }

@@ -13,20 +13,18 @@
     unused_qualifications
 )]
 
-use blowfish::block_cipher::{BlockCipher, NewBlockCipher};
-use failure::Fail;
+use blowfish::block_cipher::BlockCipher;
+use blowfish::block_cipher::NewBlockCipher;
 use generic_array::GenericArray;
-use sha2;
 use sha2::Digest;
 use std::fmt;
-
-type BlowfishBE = blowfish::Blowfish<byteorder::BigEndian>;
+use thiserror::Error;
 
 /// Error codes that can be returned by this library.
-#[derive(Fail, Debug, Copy, Clone)]
+#[derive(Error, Debug, Copy, Clone)]
 pub enum Error {
     /// Unknown VimCrypt method. Only 01-03 are supported, i.e. up to Vim 8.
-    #[fail(display = "Unknown VimCrypt header.")]
+    #[error("Unknown VimCrypt header.")]
     UnknownCryptMethod,
 }
 
@@ -107,9 +105,9 @@ fn zip_decrypt(data: &[u8], password: &str) -> Result<Vec<u8>> {
 
 fn sha256(password: &[u8], salt: &[u8]) -> Vec<u8> {
     let mut hasher = sha2::Sha256::default();
-    hasher.input(password);
-    hasher.input(salt);
-    hasher.result().to_vec()
+    hasher.update(password);
+    hasher.update(salt);
+    hasher.finalize().to_vec()
 }
 
 fn to_hex_string(bytes: &[u8]) -> String {
@@ -139,7 +137,7 @@ fn blowfish_decrypt(all_data: &[u8], password: &str) -> Result<Vec<u8>> {
     let data = all_data[16..].to_vec();
 
     let key = hashpw(password, salt);
-    let bf = BlowfishBE::new_varkey(&key).unwrap();
+    let bf = blowfish::Blowfish::<byteorder::BE>::new_varkey(&key).unwrap();
 
     let mut xor = iv.to_vec();
     wordswap(&mut xor);
@@ -150,7 +148,7 @@ fn blowfish_decrypt(all_data: &[u8], password: &str) -> Result<Vec<u8>> {
         if o >= 64 && o % 8 == 0 {
             xor = data[o - 64..(o - 64 + 8).min(data.len())].to_vec();
             wordswap(&mut xor);
-            bf.encrypt_block(&mut GenericArray::from_mut_slice(&mut xor));
+            bf.encrypt_block(GenericArray::from_mut_slice(&mut xor));
             wordswap(&mut xor);
         }
         plaintext.push(xor[o % 8] ^ data[o]);
@@ -164,14 +162,14 @@ fn blowfish2_decrypt(all_data: &[u8], password: &str) -> Result<Vec<u8>> {
     let data = all_data[16..].to_vec();
 
     let key = hashpw(password, salt);
-    let bf = BlowfishBE::new_varkey(&key).unwrap();
+    let bf = blowfish::Blowfish::<byteorder::BE>::new_varkey(&key).unwrap();
 
     let mut xor = vec![8; 0];
     let mut plaintext = Vec::new();
     for o in 0..data.len() {
         if o % 8 == 0 {
             wordswap(&mut iv);
-            bf.encrypt_block(&mut GenericArray::from_mut_slice(&mut iv));
+            bf.encrypt_block(GenericArray::from_mut_slice(&mut iv));
             wordswap(&mut iv);
             xor = iv;
             iv = data[o..(o + 8).min(data.len())].to_vec();
@@ -200,5 +198,5 @@ pub fn decrypt(data: &[u8], password: &str) -> Result<Vec<u8>> {
 
 /// Returns the CryptMethod that was used on this file.
 pub fn get_crypt_method(data: &[u8]) -> Result<CryptMethod> {
-    Ok(CryptMethod::from_header(&data[0..12])?)
+    CryptMethod::from_header(&data[0..12])
 }
