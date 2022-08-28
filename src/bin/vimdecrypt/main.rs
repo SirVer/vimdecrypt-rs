@@ -1,19 +1,17 @@
-use rpassword;
+use clap::Parser;
 use std::fs;
 use std::path::PathBuf;
-use structopt::StructOpt;
-use vimdecrypt;
 
 /// Decrypts files encrpyted with Vim.
-#[derive(StructOpt, Debug)]
-#[structopt(name = "vimdecrypt", author = "Holger H. Rapp <SirVer@gmx.de>")]
+#[derive(Parser, Debug)]
+#[clap(name = "vimdecrypt", author = "Holger H. Rapp <SirVer@gmx.de>")]
 struct Args {
     /// The files to process.
-    #[structopt(name = "FILE", parse(from_os_str))]
+    #[clap(value_name = "FILE")]
     input: Vec<PathBuf>,
 
     /// Do not decrypt files, instead print out which 'cryptmethod' they are using.
-    #[structopt(short = "-t")]
+    #[clap(short)]
     test: bool,
 }
 
@@ -35,7 +33,7 @@ fn main() {
             );
         } else {
             if password.is_none() {
-                password = Some(rpassword::prompt_password_stdout("Password: ").unwrap());
+                password = Some(rpassword::prompt_password("Password: ").unwrap());
             }
             let result =
                 vimdecrypt::decrypt(&data, password.as_ref().unwrap()).expect("Decryption failed.");
